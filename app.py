@@ -33,6 +33,8 @@ if "WAIT_AFTER_FILECHANGE" in os.environ:
 if "SOURCE_FILES" in os.environ:
     SOURCE_FILES = json.loads(os.environ['SOURCE_FILES'])
 
+full_scan_lock = Lock()
+
 files_lock = Lock()
 files_to_scan = dict()
 files_to_remove = dict()
@@ -203,12 +205,19 @@ def remove_old_path(redis_client, full_path):
         redis_client.delete(size_key)
 
 
-def scan_all(redis_client, path, use_cache=True):
+def scan_all(redis_client, path, use_cache=True, log=False):
+    last_log = time.time() + 30
+    count = 0
     for root, dirs, files in os.walk(path):
         for name in files:
             full_path = os.path.abspath(os.path.join(root, name))
             remove_old_path(redis_client, full_path)
             scan_file(redis_client, full_path, use_cache=use_cache)
+            count += 1
+            if log and time.time() > last_log:
+                last_log = time.time() + 30
+                print("Scanning files complete to "+str(int(count*100//len(files)))+"%")
+        
 
 def get_all_args(args):
     d = dict()
@@ -242,12 +251,20 @@ def create_app(test_config=None):
     wait_thread = WaitForTimerThread(stop_flag, redis_client)
     wait_thread.start()
 
-    print("Serving the following directories:")
-    for sf in SOURCE_FILES:
-        print("  "+sf)
-        watch_files(redis_client, sf)
-        scan_all(redis_client, sf)
-    print("All done")
+
+    if full_scan_lock.acquire(blocking=False):
+        try:
+            print("Serving the following directories:")
+            for sf in SOURCE_FILES:
+                print("  "+sf)
+                watch_files(redis_client, sf)
+                scan_all(redis_client, sf, log=True)
+            print("All done")
+        finally:
+            full_scan_lock.release()
+    else:
+        full_scan_lock.acquire()
+        full_scan_lock.release()
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
