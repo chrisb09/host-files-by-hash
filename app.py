@@ -42,6 +42,21 @@ files_to_remove = dict()
 
 watched_files = dict()
 
+class ScanThread(Thread):
+
+    redis_client = None
+    folders = None
+
+    def __init__(self, redis_client, folders):
+        Thread.__init__(self)
+        self.redis_client = redis_client
+        self.folders = folders
+
+    def run(self):
+        for folder in self.folders:
+            scan_all(self.redis_client, folder, log=True)
+        print("Scan done")
+
 class WaitForTimerThread(Thread):
 
     redis_client = None
@@ -247,19 +262,18 @@ def create_app(test_config=None):
     redis_client.init_app(app)
 
 
-    stop_flag = Event()
-    wait_thread = WaitForTimerThread(stop_flag, redis_client)
-    wait_thread.start()
-
-
     if full_scan_lock.acquire(blocking=False):
         try:
+            stop_flag = Event()
+            wait_thread = WaitForTimerThread(stop_flag, redis_client)
+            wait_thread.start()
             print("Serving the following directories:")
             for sf in SOURCE_FILES:
                 print("  "+sf)
                 watch_files(redis_client, sf)
                 scan_all(redis_client, sf, log=True)
-            print("All done")
+            scan_thread = ScanThread(redis_client, SOURCE_FILES)
+            scan_thread.start()
         finally:
             full_scan_lock.release()
     else:
