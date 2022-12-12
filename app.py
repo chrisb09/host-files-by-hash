@@ -271,7 +271,6 @@ def create_app(test_config=None):
             for sf in SOURCE_FILES:
                 print("  "+sf)
                 watch_files(redis_client, sf)
-                scan_all(redis_client, sf, log=True)
             scan_thread = ScanThread(redis_client, SOURCE_FILES)
             scan_thread.start()
         finally:
