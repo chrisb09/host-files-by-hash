@@ -1,0 +1,37 @@
+version: '2'
+
+services:
+  host-file-by-hash:
+    container_name: host-file-by-hash
+    depends_on:
+      - redis-host-file-by-hash
+    build: ./
+    image: host-file-by-hash
+    ports:
+      - 7222:7222
+    environment:
+      - WAIT_AFTER_FILECHANGE=5
+      - SOURCE_FILES=["/test","/data"]
+      - REDIS_HOST=redis-host-file-by-hash
+      - REDIS_HOST_PASSWORD=redis1234
+      - REDIS_URL=redis://:redis1234@redis-host-file-by-hash:6379/0
+    volumes:
+      - ./data:/data:ro
+      - ./test:/test:ro
+    command: gunicorn --workers 4 --bind 0.0.0.0:7222 --timeout 120 'app:create_app()'
+  redis-host-file-by-hash:
+    container_name: redis-host-file-by-hash
+    image: redis:alpine
+    hostname: redis-host-file-by-hash
+    restart: unless-stopped
+    command: redis-server --requirepass redis1234
+  tor:
+    container_name: tor-host-file-by-hash
+    image: goldy/tor-hidden-service:0.3.5.8
+    links:
+      - host-file-by-hash
+    environment:
+        # hello and again will share the same onion v3 address
+        SERVICE1_TOR_SERVICE_HOSTS: 80:host-file-by-hash:7222
+        # Optional as tor version 2 is not supported anymore
+        SERVICE1_TOR_SERVICE_VERSION: '3'
