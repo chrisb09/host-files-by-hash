@@ -67,3 +67,5 @@ Example output:
 * Allow for cookie based authentication
 * Allow for client-side sorting in index page
 * Allow for option to disable md5/sha1 hashing
+* Put rendering of index file into seperate static files etc.
+* Prerender index file whenever changes happen to improve performance
