@@ -338,7 +338,6 @@ def create_app(test_config=None):
                 if redis_client.exists(key):
                     filename = redis_client.sscan(key)[1][0]#.decode("utf-8")
                     return send_file(filename)
-        print(args)
         return "<center><h1>There is no file with a corresponding hash available.</h1><center>"
 
     @app.route('/index')
@@ -415,8 +414,6 @@ def create_app(test_config=None):
             #sha1 = sha1.decode("utf-8")
             path = key[5:]#.decode("utf-8")[5:]
             text += "<tr><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td><td></tr>"
-
-            print(key)
 
         text += "</table></center>"
         #print(redis_client.get('index'))
