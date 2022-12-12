@@ -1,3 +1,7 @@
+This simple flask project calculates hashes of files in specified folders and offers these files via http for simple and convenient file sharing using md5 or sha1 hashes to identify the files. It also offers a simplistic index page that lists hashes, filename and size. For a fast performance redis is used.
+I highly recommend using the included docker-compose file to deploy this script as it also sets up redis out-of-the-box
+Additionally, the docker-compose file includes a TOR image, allowing for the file sharing to work anonymously via TOR, although the speeds will be significantly lower. Still, for anyone who cannot forward ports in their firewall this can be quite useful.
+
 
 # Use
 
