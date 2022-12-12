@@ -190,9 +190,9 @@ def remove_old_path(redis_client, full_path):
     size_key = "size:"+full_path
     if redis_client.exists(path_key):
         values = redis_client.lrange(path_key, 0, -1)
-        it = iter(values)
-        for md5 in it:
-            sha1 = next(it)
+        for i in range(0,len(values)//2):
+            md5 = values[2*i]
+            sha1 = values[2*i+1]
             #md5 = md5.decode("utf-8")
             #sha1 = sha1.decode("utf-8")
             redis_client.srem("md5:"+md5, full_path)
