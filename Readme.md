@@ -62,10 +62,15 @@ Example output:
 
 # TO-DO
 
-* Make index-page optional
-* Allow for passwords for files/folders or index page
-* Allow for cookie based authentication
-* Allow for client-side sorting in index page
-* Allow for option to disable md5/sha1 hashing
-* Put rendering of index file into seperate static files etc.
-* Prerender index file whenever changes happen to improve performance
+- [ ] Allow for whitelist/blacklists for files
+- [ ] Make index-page optional
+- [ ] Allow for passwords for files/folders or index page
+- [ ] Allow for cookie based authentication
+- [ ] Allow for client-side sorting in index page
+- [ ] Allow for option to disable md5/sha1 hashing
+- [x] Put rendering of index file into seperate static files etc.
+- [ ] Prerender index file whenever changes happen to improve performance
+- [x] list render time and amount of entries in index
+- [x] Proper exit handling (stop worker)
+- [ ] Allow for hash-caching to be disabled
+- [ ] Calculate and serve thumbnails

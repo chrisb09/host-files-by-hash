@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <link rel="stylesheet" href="{{index_css}}">
+    <script src="{{index_js}}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='icon/logo.png') }}">
+</head>
+
+<body>
+    <center>
+        <table class="styled-table">
+            <tr>
+                <td>MD5</td>
+                <td>SHA1</td>
+                <td>Name</td>
+                <td>Size</td>
+            </tr>
+            {{text|safe}}
+        </table>
+    </center>
+    <div id='footer'>
+        <div class='left'></div>
+        <div class='center'>{{file_count}} files</div>
+        <div class='right'>{{time_in_ms}} ms</div>
+    </div>
+</body>
+
+</html>

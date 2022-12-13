@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import render_template, url_for, send_file, request
+from flask import render_template, url_for, send_file, request, redirect
 
 from flask_redis import FlaskRedis
 from mockredis import MockRedis
@@ -9,23 +9,26 @@ from watchdog.events import FileSystemEventHandler
 
 from threading import Thread, Lock, Event
 
-import os, hashlib, time, math, json
+import os, hashlib, time, math, json, signal
 
-REDIS_HOST = "localhost"
-REDIS_HOST_PORT = 6379
-REDIS_HOST_PASSWORD = ""
 REDIS_URL = "redis://:password@localhost:6379/0"
 WAIT_AFTER_FILECHANGE = 3
-SOURCE_FILES = '["data"]'
+SOURCE_FILES = ["data"]
 
+stop_flag = None
 
-if "REDIS_HOST" in os.environ:
-    REDIS_HOST = os.environ["REDIS_HOST"]
-    print(REDIS_HOST)
-if "REDIS_HOST_PORT" in os.environ:
-    REDIS_HOST_PORT = os.environ["REDIS_HOST_PORT"]
-if "REDIS_HOST_PASSWORD" in os.environ:
-    REDIS_HOST_PASSWORD = os.environ["REDIS_HOST_PASSWORD"]
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    stop_flag.set()
+    exit()
+
+def mstr(x): #converts bytes to string only if x is bytes
+    if type(x) == type(bytes()):
+        return x.decode("utf-8")
+    return x
+
+signal.signal(signal.SIGINT, signal_handler)
+
 if "REDIS_URL" in os.environ:
     REDIS_URL = os.environ["REDIS_URL"]
 if "WAIT_AFTER_FILECHANGE" in os.environ:
@@ -76,10 +79,8 @@ class WaitForTimerThread(Thread):
                     if files_to_remove[path] < ct:
                         to_rem.append(path)
                         if os.path.exists(path):
-                            print("File still exists :/ "+path)
                             files_to_scan[path] = ct + WAIT_AFTER_FILECHANGE
                         else:
-                            print("Remove "+path)
                             remove_old_path(self.redis_client, path)
                 for path in to_rem:
                     del files_to_remove[path]
@@ -100,11 +101,13 @@ def print_b(filesize):
     return ("%.2f"% (filesize/float(10**(3*index)) ) ) + " "+endings[index]
 
 def watch_files(redis_client, path):
-
-    watched_files[path] = Observer()
-    event_handler = Handler(redis_client)
-    watched_files[path].schedule(event_handler, path, recursive = True)
-    watched_files[path].start()
+    if not os.path.exists(path):
+        os.makedirs(path)
+    if os.path.exists(path):
+        watched_files[path] = Observer()
+        event_handler = Handler(redis_client)
+        watched_files[path].schedule(event_handler, path, recursive = True)
+        watched_files[path].start()
 
 class Handler(FileSystemEventHandler):
 
@@ -181,8 +184,8 @@ def scan_file(redis_client, path, use_cache=True):
             scan = True
         else:
             md5, sha1 = values
-        #md5 = md5.decode("utf-8")
-        #sha1 = sha1.decode("utf-8")
+        md5 = mstr(md5)
+        sha1 = mstr(sha1)
     if scan:
         md5 = hash_md5(path)
         sha1 = hash_sha1(path)
@@ -210,8 +213,8 @@ def remove_old_path(redis_client, full_path):
         for i in range(0,len(values)//2):
             md5 = values[2*i]
             sha1 = values[2*i+1]
-            #md5 = md5.decode("utf-8")
-            #sha1 = sha1.decode("utf-8")
+            md5 = mstr(md5)
+            sha1 = mstr(sha1)
             redis_client.srem("md5:"+md5, full_path)
             redis_client.srem("sha1:"+sha1, full_path)
             delete_redis_set_if_empty(redis_client, "md5:"+md5)
@@ -247,23 +250,34 @@ def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping()
-    app.config['REDIS_HOST'] = REDIS_HOST
-    app.config['REDIS_PORT'] = REDIS_HOST_PORT
-    app.config['REDIS_DB'] = 0
-    app.config['REDIS_PASSWORD'] = REDIS_HOST_PASSWORD
     app.config['REDIS_URL'] = REDIS_URL
 
-    if app.testing:
-        print("Testing")
-        redis_client = FlaskRedis.from_custom_provider(MockRedis)
-    else:
-        print("Production")
-        redis_client = FlaskRedis(app, decode_responses=True)
-    redis_client.init_app(app)
+    id = None
+    if "TESTING" in os.environ:
+        print("TESTING")
+        app.config["TESTING"] = bool(os.environ["TESTING"])
 
+    if app.testing:
+        redis_client = FlaskRedis.from_custom_provider(MockRedis)
+        redis_client.init_app(app)
+    else:
+        redis_client = FlaskRedis(app, decode_responses=True)
+        try:
+            redis_client.init_app(app)
+            r = redis_client.ping()
+        except Exception:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("Redis-Database connection not found!")
+            print("Using mockredis database. All scanned data is not persistent!")
+        redis_client = FlaskRedis.from_custom_provider(MockRedis)
+        redis_client.init_app(app)
 
     if full_scan_lock.acquire(blocking=False):
         try:
+            redis_client.delete("id")
+            id = redis_client.incr("id", amount=0)
+            print("Initial Worker-"+str(id)+" started.")
+            global stop_flag
             stop_flag = Event()
             wait_thread = WaitForTimerThread(stop_flag, redis_client)
             wait_thread.start()
@@ -273,10 +287,13 @@ def create_app(test_config=None):
                 watch_files(redis_client, sf)
             scan_thread = ScanThread(redis_client, SOURCE_FILES)
             scan_thread.start()
+            print("Initial worker-"+str(id)+" started subsequent tasks.")
         finally:
             full_scan_lock.release()
     else:
         full_scan_lock.acquire()
+        id = redis_client.incr("id")
+        print("Worker-"+str(id)+" started.")
         full_scan_lock.release()
 
     if test_config is None:
@@ -302,7 +319,7 @@ def create_app(test_config=None):
             return message
         key = "md5:"+md5
         if redis_client.exists(key):
-            filename = redis_client.sscan(key)[1][0]
+            filename = mstr(redis_client.sscan(key)[1][0])
             return send_file(filename)
         return message
 
@@ -316,109 +333,43 @@ def create_app(test_config=None):
             return message
         key = "sha1:"+sha1
         if redis_client.exists(key):
-            filename = redis_client.sscan(key)[1][0]
+            filename = mstr(redis_client.sscan(key)[1][0])
             return send_file(filename)
         return message
 
-    # a simple page that says hello
-    @app.route('/file')
-    def file():
-        md5 = request.args.get('md5')
-        sha1 = request.args.get('sha1')
-        args = get_all_args(request.args)
-        if "md5" in args:
-            for m in args["md5"]:
-                key = "md5:"+m
-                if redis_client.exists(key):
-                    filename = redis_client.sscan(key)[1][0]#.decode("utf-8")
-                    return send_file(filename)
-        if "sha1" in args:
-            for m in args["sha1"]:
-                key = "sha1:"+m
-                if redis_client.exists(key):
-                    filename = redis_client.sscan(key)[1][0]#.decode("utf-8")
-                    return send_file(filename)
-        return "<center><h1>There is no file with a corresponding hash available.</h1><center>"
-
     @app.route('/index')
     def index():
-        text = """
-        <html>
-            <head>
-                <style>
-                    .styled-table {
-                        border-collapse: collapse;
-                        margin: 25px 0;
-                        font-size: 0.9em;
-                        font-family: sans-serif;
-                        min-width: 400px;
-                        box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
-                        max-width: 25%;
-
-                    }
-                    .styled-table thead tr {
-                        background-color: #00F879;
-                        color: #ffffff;
-                        text-align: left;
-                    }
-                    .styled-table th,
-                    .styled-table td {
-                        padding: 12px 15px;
-                    }
-                    .styled-table tbody tr {
-                        border-bottom: 1px solid #dddddd;
-                    }
-
-                    .styled-table tbody tr:nth-of-type(even) {
-                        background-color: #f3f3f3;
-                    }
-
-                    .styled-table tbody tr:last-of-type {
-                        border-bottom: 2px solid #009879;
-                    }
-                    .styled-table tbody tr.active-row {
-                        font-weight: bold;
-                        color: #009879;
-                    }
-                    a,a:visited,a:hover,a:active{
-                        -webkit-backface-visibility:hidden;
-                                backface-visibility:hidden;
-                        position:relative;
-                        text-decoration:none;
-                        color:black;
-                    }
-                    a:hover{
-                        color:#DE3163;
-                    }
-
-                </style>
-            </head>
-            <body>
-                <center>
-                <table class="styled-table">
-                    <tr>
-                        <td>MD5</td>
-                        <td>SHA1</td>
-                        <td>Name</td>
-                        <td>Size</td>
-                    </tr>"""
+        start_time = time.time()
+        count = 0
+        text = ""
         for key in redis_client.scan_iter("path:*"):
+            count += 1
             values = redis_client.lrange(key, 0, -1)
             if len(values) != 2:
-                print(key)
-                print("too many entries:")
-                print(values)
                 continue
             md5, sha1 = values
-            #md5 = md5.decode("utf-8")
-            #sha1 = sha1.decode("utf-8")
-            path = key[5:]#.decode("utf-8")[5:]
+            md5 = mstr(md5)
+            sha1 = mstr(sha1)
+            path = mstr(key)[5:]
             text += "<tr><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td><td></tr>"
 
-        text += "</table></center>"
-        #print(redis_client.get('index'))
-        #redis_client.set('potato', '"zoomer boomer jet DANGER ZONE.webm"')
-        #print(redis_client.get('potato'))
-        return text
+        
+        time_in_ms = int(1000*(time.time()-start_time))
+
+        index_js = app.url_for('static', filename='index.js')
+        index_css = app.url_for('static', filename='index.css')
+        return render_template('index.html',
+                                            index_js=index_js,
+                                            index_css=index_css,
+                                            text=text,
+                                            time_in_ms=time_in_ms,
+                                            file_count=count)
+    @app.route("/")
+    def default():
+        return redirect(url_for('index'), code=302)
+
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return redirect(url_for('index'), code=302)
 
     return app
