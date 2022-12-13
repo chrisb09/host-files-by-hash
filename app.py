@@ -269,8 +269,8 @@ def create_app(test_config=None):
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print("Redis-Database connection not found!")
             print("Using mockredis database. All scanned data is not persistent!")
-        redis_client = FlaskRedis.from_custom_provider(MockRedis)
-        redis_client.init_app(app)
+            redis_client = FlaskRedis.from_custom_provider(MockRedis)
+            redis_client.init_app(app)
 
     if full_scan_lock.acquire(blocking=False):
         try:
