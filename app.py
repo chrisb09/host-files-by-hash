@@ -7,7 +7,7 @@ try:
 except ImportError as e:
     MockRedis = None
 
-
+from host_file_by_hash import thumbnail
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -16,8 +16,6 @@ from threading import Thread, Lock, Event
 
 import os, hashlib, time, math, json, signal
 from datetime import datetime
-
-import thumbnail
 
 REDIS_URL = "redis://:password@localhost:6379/0"
 WAIT_AFTER_FILECHANGE = 3
@@ -46,7 +44,6 @@ if "SOURCE_FILES" in os.environ:
 
 full_scan_lock = Lock()
 
-files_lock = Lock()
 files_to_scan = dict()
 files_to_remove = dict()
 
@@ -79,29 +76,25 @@ class WaitForTimerThread(Thread):
 
     def run(self):
         while not self.stopped.wait(0.5):
-            files_lock.acquire()
-            try:
-                ct = time.time()
-                to_rem = list()
-                for path in files_to_remove:
-                    if files_to_remove[path] < ct:
-                        to_rem.append(path)
-                        if os.path.exists(path):
-                            files_to_scan[path] = ct + WAIT_AFTER_FILECHANGE
-                        else:
-                            remove_old_path(self.redis_client, path)
-                for path in to_rem:
-                    del files_to_remove[path]
-                to_rem = list()
-                for path in files_to_scan:
-                    if files_to_scan[path] < ct:
-                        to_rem.append(path)
-                        if os.path.exists(path):
-                            scan_file(self.redis_client, path)
-                for path in to_rem:
-                    del files_to_scan[path]
-            finally:
-                files_lock.release()
+            ct = time.time()
+            to_rem = list()
+            for path in files_to_remove:
+                if files_to_remove[path] < ct:
+                    to_rem.append(path)
+                    if os.path.exists(path):
+                        files_to_scan[path] = ct + WAIT_AFTER_FILECHANGE
+                    else:
+                        remove_old_path(self.redis_client, path)
+            for path in to_rem:
+                del files_to_remove[path]
+            to_rem = list()
+            for path in files_to_scan:
+                if files_to_scan[path] < ct:
+                    to_rem.append(path)
+                    if os.path.exists(path):
+                        scan_file(self.redis_client, path)
+            for path in to_rem:
+                del files_to_scan[path]
 
 def print_b(filesize):
     endings = ["B","KB","MB","GB","TB","PB","EB"]
@@ -128,41 +121,25 @@ class Handler(FileSystemEventHandler):
 
     def on_created(self, event):
         if not event.is_directory:
-            files_lock.acquire()
-            try:
-                path = os.path.abspath(event.src_path)
-                files_to_scan[path] = time.time() + WAIT_AFTER_FILECHANGE
-            finally:
-                files_lock.release()
+            path = os.path.abspath(event.src_path)
+            files_to_scan[path] = time.time() + WAIT_AFTER_FILECHANGE()
 
     def on_modified(self, event):
         if not event.is_directory:
-            files_lock.acquire()
-            try:
-                path = os.path.abspath(event.src_path)
-                files_to_scan[path] = time.time() + WAIT_AFTER_FILECHANGE
-            finally:
-                files_lock.release()
+            path = os.path.abspath(event.src_path)
+            files_to_scan[path] = time.time() + WAIT_AFTER_FILECHANGE
 
     def on_deleted(self, event):
         if not event.is_directory:
-            files_lock.acquire()
-            try:
                 path = os.path.abspath(event.src_path)
                 files_to_remove[path] = time.time() + WAIT_AFTER_FILECHANGE
-            finally:
-                files_lock.release()
 
     def on_moved(self, event):
         if not event.is_directory:
-            files_lock.acquire()
-            try:
-                path = os.path.abspath(event.dest_path)
-                files_to_scan[path] = time.time() + WAIT_AFTER_FILECHANGE
-                path = os.path.abspath(event.src_path)
-                files_to_remove[path] = time.time() + WAIT_AFTER_FILECHANGE
-            finally:
-                files_lock.release()
+            path = os.path.abspath(event.dest_path)
+            files_to_scan[path] = time.time() + WAIT_AFTER_FILECHANGE
+            path = os.path.abspath(event.src_path)
+            files_to_remove[path] = time.time() + WAIT_AFTER_FILECHANGE
 
 
 
@@ -289,10 +266,16 @@ def create_app(test_config=None):
             redis_client = FlaskRedis.from_custom_provider(MockRedis)
             redis_client.init_app(app)
 
-    if full_scan_lock.acquire(blocking=False):
+    if redis_client.setnx("master", 0):
         try:
+            print("Wait 1s for other workers to realize they aren't the master")
+            time.sleep(1)
             redis_client.delete("id")
             id = redis_client.incr("id", amount=0)
+
+            redis_client.set("clients", 1)
+            redis_client.delete("master")
+
             print("Initial Worker-"+str(id)+" started.")
             global stop_flag
             stop_flag = Event()
@@ -306,12 +289,16 @@ def create_app(test_config=None):
             scan_thread.start()
             print("Initial worker-"+str(id)+" started subsequent tasks.")
         finally:
-            full_scan_lock.release()
+            time.sleep(1)
+            redis_client.delete("master")
+        time.sleep(3)
+        redis_client.delete("clients")
     else:
-        full_scan_lock.acquire()
-        id = redis_client.incr("id")
+        while id is None:
+            time.sleep(0.1)
+            if redis_client.exists("clients"):
+                id = redis_client.incr("id")
         print("Worker-"+str(id)+" started.")
-        full_scan_lock.release()
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
@@ -427,4 +414,4 @@ def generate_thumbnail(path, hash_value):
         'quality': 85,
         'thumbnail': False
     }
-    return thumbnail.generate_thumbnail(path, 'thumbnails/'+hash_value+'.png', options=options, verbose=True)
+    return thumbnail.generate_thumbnail(path, 'thumbnails/'+hash_value+'.png', verbose=True)
