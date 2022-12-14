@@ -2,7 +2,12 @@ from flask import Flask
 from flask import render_template, url_for, send_file, request, redirect
 
 from flask_redis import FlaskRedis
-from mockredis import MockRedis
+try:
+    from mockredis import MockRedis
+except ImportError as e:
+    MockRedis = None
+
+
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -264,6 +269,9 @@ def create_app(test_config=None):
         app.config["TESTING"] = bool(os.environ["TESTING"])
 
     if app.testing:
+        if MockRedis is None:
+            print("MockRedis not found!")
+            exit()
         redis_client = FlaskRedis.from_custom_provider(MockRedis)
         redis_client.init_app(app)
     else:
@@ -275,6 +283,9 @@ def create_app(test_config=None):
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print("Redis-Database connection not found!")
             print("Using mockredis database. All scanned data is not persistent!")
+            if MockRedis is None:
+                print("MockRedis not found!")
+                exit()
             redis_client = FlaskRedis.from_custom_provider(MockRedis)
             redis_client.init_app(app)
 
