@@ -13,12 +13,25 @@ function toggleThumbnail(e, element) {
         thumbnail.src = "thumbnail/sha1/"+thumbnail_id+"";
         x=e.clientX;
         y=e.clientY;
+        var rect = e.target.getBoundingClientRect();
+        y = parseInt((rect.top + rect.bottom) / 2) + window.scrollY;
+        //console.log(rect.top, rect.right, rect.bottom, rect.left);
+
+
         popup.style.top=Math.min(screen.height-150, Math.max(150, y))+'px';
         popup.style.left='200px';
         popup.style.visibility = "visible";
     }
     //var popup = document.getElementById("thumbnail:"+sha1);
 
+}
+
+document.documentElement.addEventListener('mouseleave', loseFocus());
+
+function loseFocus() {
+    if (popup != null)
+        popup.style.visibility = "hidden";
+    previous = null;
 }
 
 function on_thumbnail_click() {
@@ -58,10 +71,7 @@ window.onmousemove = function (e) {
         }
     }
     if (remove) {
-        if (popup != null ) {
-            popup.style.visibility = "hidden";
-            previous = null;
-        }
+        loseFocus()
     }
     //<tr id='tr:"+sha1+"' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
     
