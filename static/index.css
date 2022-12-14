@@ -15,6 +15,7 @@
 }
 .styled-table th,
 .styled-table td {
+    min-width: 100px;
     padding: 12px 15px;
 }
 .styled-table tbody tr {
@@ -40,7 +41,7 @@ a:hover{
     color:#DE3163;
 }
 #footer { 
-    position: absolute; 
+    position: relative; 
     left: 0 ; right: 0; bottom: 0;
     padding: 10px;
     margin: 0px 10px;
@@ -65,4 +66,23 @@ a:hover{
     right: 0;
     top: 0;
     text-align: right;
+}
+
+
+
+#thumbnail {
+    visibility: hidden;
+    background-color: yellowgreen;
+    position: absolute;
+    border: 1px solid black;
+    padding: 0px;
+    margin: 0px;
+    z-index: 1;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+#thumbnail :hover {
+    cursor: pointer;
 }

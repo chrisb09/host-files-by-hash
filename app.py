@@ -10,6 +10,9 @@ from watchdog.events import FileSystemEventHandler
 from threading import Thread, Lock, Event
 
 import os, hashlib, time, math, json, signal
+from datetime import datetime
+
+import thumbnail
 
 REDIS_URL = "redis://:password@localhost:6379/0"
 WAIT_AFTER_FILECHANGE = 3
@@ -187,8 +190,10 @@ def scan_file(redis_client, path, use_cache=True):
         md5 = mstr(md5)
         sha1 = mstr(sha1)
     if scan:
+        print(path)
         md5 = hash_md5(path)
         sha1 = hash_sha1(path)
+        generate_thumbnail(path, sha1)
     md5_key  = "md5:" +md5
     sha1_key = "sha1:"+sha1
     redis_client.sadd(md5_key, path)
@@ -235,6 +240,7 @@ def scan_all(redis_client, path, use_cache=True, log=False):
             if log and time.time() > last_log:
                 last_log = time.time() + 30
                 print("Scanning files complete to "+str(int(count*100//len(files)))+"%")
+    # thumbnail.close_unoserver()
         
 
 def get_all_args(args):
@@ -337,6 +343,24 @@ def create_app(test_config=None):
             return send_file(filename)
         return message
 
+    @app.route("/thumbnail/md5/<md5>")
+    @app.route("/thumbnail/sha1/<sha1>")
+    def thumbnail(md5=None, sha1=None):
+        if md5 is None and sha1 is None:
+            return "", 404
+        if md5 is not None:
+            #redis_client.sadd(md5_key, path)
+            key = "md5:"+str(md5)
+            if redis_client.exists(key):
+                members = redis_client.smembers(key)
+                print(members)
+                return redirect(url_for('thumbnails/sha1', sha1=list(members)[0]), code=302)
+        if sha1 is not None:
+            path = "thumbnails/"+sha1+".png"
+            if os.path.exists(path):
+                return send_file(path)
+        return redirect(url_for('static', filename="icon/undefined.png"), 302)
+
     @app.route('/index')
     def index():
         start_time = time.time()
@@ -351,7 +375,7 @@ def create_app(test_config=None):
             md5 = mstr(md5)
             sha1 = mstr(sha1)
             path = mstr(key)[5:]
-            text += "<tr><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td><td></tr>"
+            text += "<tr id='tr:"+sha1+"' class='file_entry' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
 
         
         time_in_ms = int(1000*(time.time()-start_time))
@@ -363,7 +387,8 @@ def create_app(test_config=None):
                                             index_css=index_css,
                                             text=text,
                                             time_in_ms=time_in_ms,
-                                            file_count=count)
+                                            strftime=strftime,
+                                            file_count=str(count)+" file"+("s" if count!=1 else ""))
     @app.route("/")
     def default():
         return redirect(url_for('index'), code=302)
@@ -373,3 +398,22 @@ def create_app(test_config=None):
         return redirect(url_for('index'), code=302)
 
     return app
+
+
+
+def strftime():
+    now = datetime.today()
+    format="%d.%m.%Y %H:%M:%S"
+    return now.strftime(format) 
+
+def generate_thumbnail(path, hash_value):
+    if not os.path.exists("thumbnails"):
+        os.makedirs("thumbnails")
+    options = {
+        'trim': False,
+        'height': 300,
+        'width': 300,
+        'quality': 85,
+        'thumbnail': False
+    }
+    return thumbnail.generate_thumbnail(path, 'thumbnails/'+hash_value+'.png', options=options, verbose=True)

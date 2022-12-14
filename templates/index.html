@@ -9,19 +9,20 @@
 
 <body>
     <center>
+        <div id="thumbnail" onclick="on_thumbnail_click()"><img id="thumbnail_image" src="/static/icon/undefined.png"></div>
         <table class="styled-table">
             <tr>
-                <td>MD5</td>
-                <td>SHA1</td>
-                <td>Name</td>
-                <td>Size</td>
+                <th>MD5</th>
+                <th>SHA1</th>
+                <th>Name</th>
+                <th>Size</th>
             </tr>
             {{text|safe}}
         </table>
     </center>
     <div id='footer'>
-        <div class='left'></div>
-        <div class='center'>{{file_count}} files</div>
+        <div class='left'>{{ strftime() }}</div>
+        <div class='center'>{{file_count}}</div>
         <div class='right'>{{time_in_ms}} ms</div>
     </div>
 </body>
