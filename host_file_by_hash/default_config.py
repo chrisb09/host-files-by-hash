@@ -7,7 +7,7 @@ COLLECTIONS =  \
             "paths":        ["./test"],         # Include folder ./test
             "blacklist":    [".*\.c",".*\.py"], # Reject all .c or .py files
             "whitelist":    ["hello"]           # Only allow files with hello in it's name
-        },                                      # uses re.match, see https://regex101.com/ for help
+        },                                      # uses re.search, see https://regex101.com/ for help
         "data": \
         {                                       # 127.0.0.1:<port>/data/index                       
             "paths":        ["./data"],         # Include folder ./data
