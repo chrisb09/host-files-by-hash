@@ -2,7 +2,10 @@
 
 FROM tiangolo/uvicorn-gunicorn:python3.11
 
-WORKDIR /python-docker
+RUN apt-get update
+RUN apt-get install -y ffmpeg imagemagick
+
+WORKDIR /host-files-by-hash
 
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
@@ -10,7 +13,5 @@ RUN pip3 install -r requirements.txt
 COPY . .
 
 RUN ls / -la
-
-RUN ls /python-docker -la
 
 CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]

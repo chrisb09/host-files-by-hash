@@ -42,8 +42,53 @@ All folders that should be included have to be specified in the `SOURCE_FILES` a
 
 ## Specifying a TOR address
 
-You can specify a private key to have a constant .onion address.
-How this can be done you can read up here: https://github.com/cmehay/docker-tor-hidden-service/blob/master/README.md
+You can specify a private `key` to have a constant .onion address.
+
+You need to add the following environment variable to the tor container:
+
+`SERVICE1_TOR_SERVICE_KEY: 'key'`
+
+where key is the base64 encoded secret key of your onion address.
+
+### Example
+
+```yaml
+tor:
+    container_name: tor-host-file-by-hash
+    image: goldy/tor-hidden-service:0.3.5.8
+    links:
+      - host-file-by-hash
+    environment:
+        SERVICE1_TOR_SERVICE_HOSTS: 80:host-file-by-hash:7222
+        # tor v3 address private key base 64 encoded
+        SERVICE1_TOR_SERVICE_KEY: 'PT0gZWQyNTUxOXYxLXNlY3JldDogdHlwZTAgPT0AAACArobDQYyZAWXei4QZwr++j96H1X/gq14NwLRZ2O5DXuL0EzYKkdhZSILY85q+kfwZH8z4ceqe7u1F+0pQi/sM'
+```
+
+This would make your service available on `xwjtp3mj427zdp4tljiiivg2l5ijfvmt5lcsfaygtpp6cw254kykvpyd.onion`
+
+:warning: Do NOT use this publically known key, generate your own!
+
+### Generate a private TOR key
+
+There are many tools to do this, but I'd recommend using torpy as it is the same program used by the tor container
+
+Install it with
+```bash
+pip install pytor
+```
+
+and generate a new key & address with
+```bash
+pytor new
+```
+
+The output is already b64 encoded, therefore you can simply paste the private key into `the docker-compose.yml`.
+
+It is noteworthy that for some reason the tor container is picky about which keys it accepts and which not, so if you come accross the
+`Private key does not seems to be a valid ed25519 tor key` error message the best option is to generate a new key until you get one it works.
+
+
+For more information: https://github.com/cmehay/docker-tor-hidden-service/blob/master/README.md
 
 ## No TOR
 
@@ -62,7 +107,7 @@ Example output:
 
 # TO-DO
 
-- [ ] Allow for whitelist/blacklists for files
+- [x] Allow for whitelist/blacklists for files
 - [ ] Make index-page optional
 - [ ] Allow for passwords for files/folders or index page
 - [ ] Allow for cookie based authentication
@@ -73,4 +118,4 @@ Example output:
 - [x] list render time and amount of entries in index
 - [x] Proper exit handling (stop worker)
 - [ ] Allow for hash-caching to be disabled
-- [ ] Calculate and serve thumbnails
+- [x] Calculate and serve thumbnails

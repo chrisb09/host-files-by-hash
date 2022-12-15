@@ -9,7 +9,7 @@ IMAGE_EXTENSIONS = {'djvu','dxf','rgb','xpm','pcx','tga','pgm','ief','svgz','ppm
 #VIDEO_EXTENSIONS = [["3gp","3gpp"],["3g2"],["h261"],["h263"],["h264"],["jpgv"],["jpm","jpgm"],["mj2","mjp2"],["ts"],["mp4","mp4v","mpg4"],["mpeg","mpg","mpe","m1v","m2v"],["ogv"],["qt","mov"],["uvh","uvvh"],["uvm","uvvm"],["uvp","uvvp"],["uvs","uvvs"],["uvv","uvvv"],["dvb"],["fvt"],["mxu","m4u"],["pyv"],["uvu","uvvu"],["viv"],["webm"],["f4v"],["fli"],["flv"],["m4v"],["mkv","mk3d","mks"],["mng"],["asf","asx"],["vob"],["wm"],["wmv"],["wmx"],["wvx"],["avi"],["movie"],["smv"]]
 VIDEO_EXTENSIONS = {'3g2','ogv','webm','avi','smv','m2v','viv','pyv','mpeg','h261','3gp','m1v','wm','asx','uvs','mov','uvh','mj2','ts','uvvp','mng','mks','fli','uvm','m4v','mk3d','mkv','jpgm','flv','uvv','wmx','mjp2','mpg4','uvvv','movie','jpgv','jpm','3gpp','fvt','mxu','m4u','f4v','qt','h263','mp4','uvu','uvp','dvb','wmv','wvx','uvvm','uvvu','mp4v','mpe','uvvh','asf','uvvs','mpg','vob','h264'}
 
-def generate_thumbnail(input, output, verbose=False):
+def _generate_thumbnail(input, output, verbose=False):
     width = str(WIDTH)
     height = str(HEIGHT)
     filename, file_extension = os.path.splitext(input)
@@ -49,3 +49,8 @@ def _create_generic_thumbnail(text, path):
         img = img.rotate(90)
 
     img.save(path)
+
+def generate_thumbnail(path, hash_value):
+    if not os.path.exists("thumbnails"):
+        os.makedirs("thumbnails")
+    return _generate_thumbnail(path, 'thumbnails/'+hash_value+'.png')

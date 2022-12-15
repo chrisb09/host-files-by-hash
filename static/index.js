@@ -9,20 +9,17 @@ function toggleThumbnail(e, element) {
     thumbnail_id = element.substring(3)
     if (previous == null || thumbnail_id != previous) {
         previous = thumbnail_id;
-        //popup.style.backgroundImage = "url('thumbnail/sha1/"+thumbnail_id+"')";
-        thumbnail.src = "thumbnail/sha1/"+thumbnail_id+"";
+        thumbnail.src = "/thumbnail/sha1/"+thumbnail_id+"";
         x=e.clientX;
         y=e.clientY;
         var rect = e.target.getBoundingClientRect();
         y = parseInt((rect.top + rect.bottom) / 2) + window.scrollY;
-        //console.log(rect.top, rect.right, rect.bottom, rect.left);
 
 
-        popup.style.top=Math.min(screen.height-150, Math.max(150, y))+'px';
+        popup.style.top=Math.min(window.scrollY+screen.height-150, Math.max(150, y))+'px';
         popup.style.left='200px';
         popup.style.visibility = "visible";
     }
-    //var popup = document.getElementById("thumbnail:"+sha1);
 
 }
 
