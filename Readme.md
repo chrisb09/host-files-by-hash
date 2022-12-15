@@ -12,7 +12,7 @@ The project can be run with redis and a tor instance for hosting via a tor hidde
 It makes sense to configure the included paths though.
 
 You can find the index page on
-`localhost:7222/index` or `<address.onion>/index` (see below how to figure out your address)
+`localhost:7222/<collection>/index` or `<address.onion>/<collection>/index` (see below how to figure out your address)
 
 The files are accessible via md5 or sha1 hashes via
 ```http://localhost:7222/md5/<md5_hash>```
@@ -24,21 +24,49 @@ The same
 
 # Configure
 
+The default-config.py:
+
+```python
+REDIS_URL = "redis://:password@localhost:6379/0"
+COLLECTIONS =  \
+    {                                           # This creates 2 collections with different folders
+        "test": \
+        {                                       # 127.0.0.1:<port>/test/index                       
+            "paths":        ["./test"],         # Include folder ./test
+            "blacklist":    [".*\.c",".*\.py"], # Reject all .c or .py files
+            "whitelist":    ["hello"]           # Only allow files with hello in it's name
+        },                                      # uses re.match, see https://regex101.com/ for help
+        "data": \
+        {                                       # 127.0.0.1:<port>/data/index                       
+            "paths":        ["./data"],         # Include folder ./data
+            "blacklist":    [],                 #
+            "whitelist":    []                  #
+        }
+    }
+```
+
+After the first run this config will be copied to the specified config location in the `instance` directory. If you are using docker you should map this directory to an accessible folder so you can edit and keep your config.
+
+You can specify the directories to be served, the URL Base for the index pages and which files should or shouldn't be included.
+
+## Docker
+
 The following is the relevant excerpt from the `docker-compose.yml`
 
 ```yaml
     environment:
-      - WAIT_AFTER_FILECHANGE=5
-      - SOURCE_FILES=["/test","/data"]
-      - REDIS_HOST=redis-host-file-by-hash
-      - REDIS_HOST_PASSWORD=redis1234
+      - CONFIG_PATH=config.py
       - REDIS_URL=redis://:redis1234@redis-host-file-by-hash:6379/0
     volumes:
       - ./data:/data:ro
       - ./test:/test:ro
 ```
 
-All folders that should be included have to be specified in the `SOURCE_FILES` array, and also need to be mapped to the container under the `volumes` entry. Adding `:ro` (for read-only) ensures that your data cannot be modified even though this simple project does not do that to begin with. But hindsight is 20/20 so i employ you to use appropriately tight permissions whenever possible.
+The `CONFIG_PATH` specifies where in the `instace` folder the config is located. If not specified as an environment variable it default is `config.py`.
+
+The `REDIS_URL` overrides the `REDIS_URL` entry in the config file. Must be specified to use with docker.
+Default value is `redis://:password@localhost:6379/0`, and since the container have different localhost interfaces it would not work otherwise.
+
 
 ## Specifying a TOR address
 
