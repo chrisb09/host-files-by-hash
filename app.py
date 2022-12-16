@@ -160,7 +160,7 @@ def create_app(test_config=None):
             path = "thumbnails/"+sha1+".png"
             if os.path.exists(path):
                 return send_file(path)
-        return redirect(url_for('static', filename="icon/undefined.png"), 302)
+        return redirect("../static/icon/undefined.png", 302)
 
     @app.route('/<collection>/index')
     def index(collection=None):
@@ -189,11 +189,9 @@ def create_app(test_config=None):
         
         time_in_ms = int(1000*(time.time()-start_time))
 
-        index_js = app.url_for('static', filename='index.js')
-        index_css = app.url_for('static', filename='index.css')
         return render_template('index.html',
-                                            index_js=index_js,
-                                            index_css=index_css,
+                                            index_js="../static/index.js",
+                                            index_css="../static/index.css",
                                             text=text,
                                             time_in_ms=time_in_ms,
                                             strftime=strftime,
