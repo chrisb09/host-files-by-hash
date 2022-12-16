@@ -155,14 +155,14 @@ def create_app(test_config=None):
             key = "md5:"+str(md5)
             if redis_client.exists(key):
                 members = redis_client.smembers(key)
-                return redirect(url_for('../thumbnails/sha1', sha1=list(members)[0]), code=302)
+                return redirect(url_for('thumbnails/sha1', sha1=list(members)[0]), code=302)
         if sha1 is not None:
             path = "thumbnails/"+sha1+".png"
             if os.path.exists(path):
                 return send_file(path)
-        return redirect("../static/icon/undefined.png", 302)
+        return redirect(url_for("static", filename="/icon/undefined.png"), 302)
 
-    @app.route('/<collection>/index')
+    @app.route('/<collection>/')
     def index(collection=None):
         if collection is None:
             return "", 404
@@ -184,23 +184,53 @@ def create_app(test_config=None):
             md5 = mstr(md5)
             sha1 = mstr(sha1)
             path = mstr(key)[5:]
-            text += "<tr id='tr:"+sha1+"' class='file_entry' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
-
+            #text += "<tr id='tr:"+sha1+"' class='file_entry' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
+            text += "<tr id='tr:"+sha1+"' class='file_entry' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+os.path.basename(path)+"<a/></td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
         
         time_in_ms = int(1000*(time.time()-start_time))
 
         return render_template('index.html',
-                                            index_js="../static/index.js",
-                                            index_css="../static/index.css",
+                                            index_js= url_for("static", filename="index.js"),
+                                            index_css=url_for("static", filename="index.css"),
                                             text=text,
                                             time_in_ms=time_in_ms,
                                             strftime=strftime,
                                             file_count=str(count)+" file"+("s" if count!=1 else ""))
     @app.route("/<collection>")
     @app.route("/<collection>/")
-    @app.route("/<collection>/<filler>")
-    def collection(collection, filler=None):
+    @app.route("/<collection>/<var1>")
+    @app.route("/<collection>/<var1>/<var2>")
+    @app.route("/<collection>/<var1>/<var2>/<var3>")
+    @app.route('/collection/<path:path>')
+    def collection(collection, var1=None, var2=None, var3=None, path=None):
         if collection in app.config["COLLECTIONS"]:
+            if var1 is not None:
+                if var1 == "index":
+                    return index(collection=collection)
+                elif var1 == "md5":
+                    return get_by_md5(md5=var2)
+                elif var1 == "sha1":
+                    return get_by_sha1(sha1=var2)
+                elif var1 == "thumbnail":
+                    m = None
+                    if var2 == "md5":
+                        m = var3
+                    s = None
+                    if var2 == "sha1":
+                        s = var3
+                    return thumbnail(md5=m, sha1=s)
+                elif var1 == "static":
+                    #print("Manual static server!!!")
+                    p = "static"
+                    if var2 is not None:
+                        p = os.path.join(p, var2)
+                    if var3 is not None:
+                        p = os.path.join(p, var3)
+                    if path is not None:
+                        print(path)
+                    #print(p)
+                    #print(os.path.abspath(p))
+                    return send_file(p)
             return redirect(url_for('index', collection=collection), code=302)
         return "", 404
 

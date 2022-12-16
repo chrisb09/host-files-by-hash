@@ -9,7 +9,7 @@ function toggleThumbnail(e, element) {
     thumbnail_id = element.substring(3)
     if (previous == null || thumbnail_id != previous) {
         previous = thumbnail_id;
-        thumbnail.src = "../thumbnail/sha1/"+thumbnail_id+"";
+        thumbnail.src = "thumbnail/sha1/"+thumbnail_id+"";
         x=e.clientX;
         y=e.clientY;
         var rect = e.target.getBoundingClientRect();
