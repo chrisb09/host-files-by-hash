@@ -155,7 +155,7 @@ def create_app(test_config=None):
             key = "md5:"+str(md5)
             if redis_client.exists(key):
                 members = redis_client.smembers(key)
-                return redirect(url_for('/thumbnails/sha1', sha1=list(members)[0]), code=302)
+                return redirect(url_for('../thumbnails/sha1', sha1=list(members)[0]), code=302)
         if sha1 is not None:
             path = "thumbnails/"+sha1+".png"
             if os.path.exists(path):
