@@ -2,6 +2,16 @@ This simple flask project calculates hashes of files in specified folders and of
 I highly recommend using the included docker-compose file to deploy this script as it also sets up redis out-of-the-box
 Additionally, the docker-compose file includes a TOR image, allowing for the file sharing to work anonymously via TOR, although the speeds will be significantly lower. Still, for anyone who cannot forward ports in their firewall this can be quite useful.
 
+# Test
+
+Test access [here](https://christian-f-brinkmann.de/cats)
+
+![using nginx](screenshots/clear.png)
+
+Or TOR-Access [here](http://p7w62uth74ve7chmfch46g36tcf57vhtef6zxuu34fsz7j5gvwjemkid.onion/cats/)
+
+![using tor](screenshots/tor.png)
+
 
 # Use
 
@@ -88,6 +98,7 @@ tor:
       - host-file-by-hash
     environment:
         SERVICE1_TOR_SERVICE_HOSTS: 80:host-file-by-hash:7222
+        SERVICE1_TOR_SERVICE_VERSION: '3'
         # tor v3 address private key base 64 encoded
         SERVICE1_TOR_SERVICE_KEY: 'PT0gZWQyNTUxOXYxLXNlY3JldDogdHlwZTAgPT0AAACArobDQYyZAWXei4QZwr++j96H1X/gq14NwLRZ2O5DXuL0EzYKkdhZSILY85q+kfwZH8z4ceqe7u1F+0pQi/sM'
 ```

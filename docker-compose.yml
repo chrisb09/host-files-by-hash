@@ -32,3 +32,4 @@ services:
       - host-file-by-hash
     environment:
         SERVICE1_TOR_SERVICE_HOSTS: 80:host-file-by-hash:7222
+        SERVICE1_TOR_SERVICE_VERSION: '3'
