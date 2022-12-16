@@ -190,8 +190,8 @@ def create_app(test_config=None):
         time_in_ms = int(1000*(time.time()-start_time))
 
         return render_template('index.html',
-                                            index_js= url_for("static", filename="index.js"),
-                                            index_css=url_for("static", filename="index.css"),
+                                            index_js= "static/index.js",
+                                            index_css="static/index.css",
                                             text=text,
                                             time_in_ms=time_in_ms,
                                             strftime=strftime,
