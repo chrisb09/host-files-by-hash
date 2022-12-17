@@ -33,7 +33,7 @@ function loseFocus() {
 
 function on_thumbnail_click() {
     if (previous != null) {
-        window.open('../sha1/'+previous, '_blank').focus();
+        window.open('sha1/'+previous, '_blank').focus();
     }
 }
 

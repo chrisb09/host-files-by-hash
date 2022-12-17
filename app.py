@@ -185,7 +185,7 @@ def create_app(test_config=None):
             sha1 = mstr(sha1)
             path = mstr(key)[5:]
             #text += "<tr id='tr:"+sha1+"' class='file_entry' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='"+url_for('get_by_md5', md5=md5)+"' target='_blank'>"+md5+"</a></td><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+sha1+"<a/></td><td>"+os.path.basename(path)+"</td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
-            text += "<tr id='tr:"+sha1+"' class='file_entry' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='"+url_for('get_by_sha1', sha1=sha1)+"' target='_blank'>"+os.path.basename(path)+"<a/></td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
+            text += "<tr id='tr:"+sha1+"' class='file_entry' onmouseover='toggleThumbnail(event,\"tr:"+sha1+"\")'><td><a href='sha1/"+sha1+"' target='_blank'>"+os.path.basename(path)+"<a/></td><td>"+print_b(os.path.getsize(path))+"</td></tr>"
         
         time_in_ms = int(1000*(time.time()-start_time))
 
